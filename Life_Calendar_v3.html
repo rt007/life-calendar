@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life Calendar - Visualise Your Life in Weeks</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface-hover: #f0efe8;
+    --border: #ddd9d0;
+    --text-primary: #1a1a2e;
+    --text-secondary: #6b6880;
+    --text-muted: #9994ab;
+    --accent: #7c6cf0;
+    --accent-light: #6c5ce7;
+    --accent-glow: rgba(124, 108, 240, 0.1);
+    --lived: #7c6cf0;
+    --lived-light: #9d90f8;
+    --remaining: #ddd9d0;
+    --remaining-hover: #c8c4bb;
+    --stat-amber: #d4a017;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  html.dark {
+    --bg: #0e0e12;
+    --surface: #16161d;
+    --surface-hover: #1e1e28;
+    --border: #2a2a36;
+    --text-primary: #e8e6f0;
+    --text-secondary: #8b89a0;
+    --text-muted: #5c5a6e;
+    --accent: #7c6cf0;
+    --accent-light: #9d90f8;
+    --accent-glow: rgba(124, 108, 240, 0.15);
+    --lived: #7c6cf0;
+    --lived-light: #9d90f8;
+    --remaining: #2a2a36;
+    --remaining-hover: #35354a;
+    --stat-amber: #f0c86c;
+    --shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background 0.35s, color 0.35s;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ───── HEADER ───── */
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    margin-bottom: 0.35rem;
+  }
+
+  .header h1 span {
+    background: linear-gradient(135deg, var(--accent-light), var(--accent), #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+
+  .header .instructions {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.6rem;
+    line-height: 1.55;
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ───── CONTROLS ───── */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .input-group label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+
+  .input-group input[type="number"] {
+    width: 160px;
+    padding: 0.65rem 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .input-group input[type="number"]::-webkit-inner-spin-button { opacity: 1; cursor: pointer; }
+
+  .input-group input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .btn {
+    padding: 0.65rem 1.6rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 0.3px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #6c5ce7);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(124, 108, 240, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(124, 108, 240, 0.45);
+    filter: brightness(1.1);
+  }
+
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-download {
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    display: none;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: var(--shadow);
+  }
+
+  .btn-download:hover {
+    border-color: var(--accent);
+    color: var(--accent-light);
+    background: var(--accent-glow);
+  }
+
+  .btn-download svg { width: 15px; height: 15px; }
+
+  /* ───── VIEW TOGGLE ───── */
+  .view-toggle {
+    display: none;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 1.8rem;
+  }
+
+  .view-toggle.visible { display: flex; }
+
+  .view-btn {
+    padding: 0.5rem 1.2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+
+  .view-btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+  .view-btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+  .view-btn:not(:first-child) { border-left: none; }
+
+  .view-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .view-btn:not(.active):hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  /* ───── STATS ───── */
+  .stats {
+    display: none;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .stats.visible { display: flex; }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.6rem;
+    text-align: center;
+    min-width: 160px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card:nth-child(1)::before { background: var(--accent); }
+  .stat-card:nth-child(2)::before { background: var(--text-muted); }
+  .stat-card:nth-child(3)::before { background: var(--stat-amber); }
+
+  .stat-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.7rem;
+    font-weight: 400;
+    margin-bottom: 0.15rem;
+  }
+
+  .stat-card:nth-child(1) .stat-value { color: var(--accent-light); }
+  .stat-card:nth-child(2) .stat-value { color: var(--text-secondary); }
+  .stat-card:nth-child(3) .stat-value { color: var(--stat-amber); }
+
+  .stat-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  /* ───── CALENDAR ───── */
+  .calendar-wrapper {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .calendar-wrapper.visible { display: flex; }
+
+  .calendar-area {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+
+  .y-axis {
+    display: flex;
+    flex-direction: column;
+    padding-right: 8px;
+    flex-shrink: 0;
+  }
+
+  .y-axis-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-align: right;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    line-height: 1;
+    width: 22px;
+  }
+
+  .grid-rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .grid-row {
+    display: flex;
+  }
+
+  .decade-spacer {
+    height: 7px;
+    flex-shrink: 0;
+  }
+
+  .week-square {
+    border-radius: 1.5px;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    cursor: default;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .week-square.lived {
+    background: var(--lived);
+  }
+
+  .week-square.remaining {
+    background: var(--remaining);
+  }
+
+  .week-square:hover {
+    transform: scale(1.6);
+    z-index: 10;
+    box-shadow: 0 0 6px rgba(124, 108, 240, 0.35);
+    border-radius: 2px;
+  }
+
+  .week-square.lived:hover { background: var(--lived-light); }
+  .week-square.remaining:hover { background: var(--remaining-hover); }
+
+  /* ───── TOOLTIP ───── */
+  .tooltip {
+    position: fixed;
+    padding: 0.4rem 0.7rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.73rem;
+    color: var(--text-primary);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 100;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+
+  html.dark .tooltip { box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+
+  .tooltip.show { opacity: 1; }
+  .tooltip .tt-week { font-weight: 600; color: var(--accent-light); }
+  .tooltip .tt-status { color: var(--text-secondary); }
+
+  /* ───── LEGEND ───── */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+  }
+
+  .legend-swatch.lived { background: var(--lived); }
+  .legend-swatch.remaining { background: var(--remaining); border: 1px solid var(--border); }
+
+  /* ───── QUOTE ───── */
+  .quote-section {
+    display: none;
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .quote-section.visible { display: block; }
+
+  .quote-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  .quote-author {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    font-weight: 400;
+  }
+
+  /* ───── DARK MODE TOGGLE ───── */
+  .theme-toggle {
+    position: fixed;
+    bottom: 1.2rem;
+    left: 1.2rem;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.85rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    box-shadow: var(--shadow);
+    transition: all 0.25s;
+    user-select: none;
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent-light);
+    box-shadow: 0 2px 12px rgba(124, 108, 240, 0.15);
+  }
+
+  .theme-toggle svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .theme-toggle .icon-sun,
+  .theme-toggle .label-light { display: none; }
+
+  html.dark .theme-toggle .icon-sun,
+  html.dark .theme-toggle .label-light { display: inline; }
+
+  html.dark .theme-toggle .icon-moon,
+  html.dark .theme-toggle .label-dark { display: none; }
+
+  /* ───── RESPONSIVE ───── */
+  @media (max-width: 640px) {
+    .container { padding: 2rem 1rem 3rem; }
+    .controls { flex-direction: column; align-items: center; }
+    .input-group input[type="number"] { width: 200px; }
+    .stat-card { min-width: 130px; padding: 0.9rem 1.2rem; }
+    .stat-value { font-size: 1.4rem; }
+    .theme-toggle { bottom: 0.8rem; left: 0.8rem; padding: 0.45rem 0.7rem; font-size: 0.7rem; }
+  }
+
+  /* ───── ANIMATION ───── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in { animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+  .delay-1 { animation-delay: 0.1s; opacity: 0; }
+  .delay-2 { animation-delay: 0.2s; opacity: 0; }
+  .delay-3 { animation-delay: 0.3s; opacity: 0; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1><span>Life Calendar</span></h1>
+    <p>Visualise your life in weeks</p>
+    <p class="instructions">1. Enter your current age to generate your calendar. 2. Download it and reflect on the time you have left, and how you want to spend it. 3. Review it daily to live with intention and make each day count!</p>
+  </div>
+
+  <div class="controls">
+    <div class="input-group">
+      <label for="age">Your Current Age (years)</label>
+      <input type="number" id="age" min="0" max="100" value="30" placeholder="30">
+    </div>
+    <div class="input-group">
+      <label for="expectancy">Life Expectancy (years)</label>
+      <input type="number" id="expectancy" min="1" max="100" value="80" placeholder="80">
+    </div>
+    <button class="btn btn-primary" id="generateBtn" onclick="generateCalendar()">Generate Calendar</button>
+    <button class="btn btn-download" id="downloadBtn" onclick="downloadPDF()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download
+    </button>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat-card animate-in delay-1">
+      <div class="stat-value" id="weeksLived">—</div>
+      <div class="stat-label" id="statLabelLived">Weeks Lived</div>
+    </div>
+    <div class="stat-card animate-in delay-2">
+      <div class="stat-value" id="weeksRemaining">—</div>
+      <div class="stat-label" id="statLabelRemaining">Weeks Remaining</div>
+    </div>
+    <div class="stat-card animate-in delay-3">
+      <div class="stat-value" id="lifePct">—</div>
+      <div class="stat-label">Life Lived</div>
+    </div>
+  </div>
+
+  <div class="view-toggle" id="viewToggle">
+    <button class="view-btn active" data-view="weeks" onclick="switchView('weeks')">Weeks</button>
+    <button class="view-btn" data-view="months" onclick="switchView('months')">Months</button>
+    <button class="view-btn" data-view="years" onclick="switchView('years')">Years</button>
+  </div>
+
+  <div class="calendar-wrapper" id="calendarWrapper">
+    <div class="calendar-area" id="calendarArea"></div>
+    <div class="legend" id="legendArea">
+      <div class="legend-item">
+        <div class="legend-swatch lived"></div>
+        <span id="legendLived">Weeks Lived</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch remaining"></div>
+        <span id="legendRemaining">Weeks Remaining</span>
+      </div>
+    </div>
+    <div class="quote-section" id="quoteSection">
+      <div class="quote-text">"Every man dies. Not every man really lives."</div>
+      <div class="quote-author">— William Wallace</div>
+    </div>
+  </div>
+</div>
+
+<!-- Theme Toggle -->
+<div class="theme-toggle" onclick="toggleTheme()">
+  <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
+  <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  <span class="label-dark">Dark mode</span>
+  <span class="label-light">Light mode</span>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip">
+  <span class="tt-week"></span> · <span class="tt-status"></span>
+</div>
+
+<script>
+  const tooltip = document.getElementById('tooltip');
+  let currentView = 'weeks';
+  let currentAge = 30;
+  let currentExpectancy = 80;
+  let calendarGenerated = false;
+
+  // ───── THEME ─────
+  function toggleTheme() {
+    document.documentElement.classList.toggle('dark');
+  }
+
+  // ───── GENERATE ─────
+  function generateCalendar() {
+    currentAge = Math.max(0, Math.min(100, parseInt(document.getElementById('age').value) || 0));
+    currentExpectancy = Math.max(1, Math.min(100, parseInt(document.getElementById('expectancy').value) || 80));
+    calendarGenerated = true;
+
+    updateStats();
+    renderGrid();
+
+    document.getElementById('stats').classList.add('visible');
+    document.getElementById('stats').querySelectorAll('.stat-card').forEach(el => {
+      el.classList.remove('animate-in');
+      void el.offsetWidth;
+      el.classList.add('animate-in');
+    });
+
+    document.getElementById('viewToggle').classList.add('visible');
+    document.getElementById('calendarWrapper').classList.add('visible');
+    document.getElementById('quoteSection').classList.add('visible');
+    document.getElementById('downloadBtn').style.display = 'inline-flex';
+  }
+
+  function updateStats() {
+    const info = getViewInfo();
+    document.getElementById('weeksLived').textContent = info.lived.toLocaleString();
+    document.getElementById('weeksRemaining').textContent = info.remaining.toLocaleString();
+    const pct = info.total > 0 ? ((info.lived / info.total) * 100).toFixed(1) : '0.0';
+    document.getElementById('lifePct').textContent = pct + '%';
+
+    const unitLabel = currentView === 'weeks' ? 'Weeks' : currentView === 'months' ? 'Months' : 'Years';
+    document.getElementById('statLabelLived').textContent = unitLabel + ' Lived';
+    document.getElementById('statLabelRemaining').textContent = unitLabel + ' Remaining';
+    document.getElementById('legendLived').textContent = unitLabel + ' Lived';
+    document.getElementById('legendRemaining').textContent = unitLabel + ' Remaining';
+  }
+
+  function getViewInfo() {
+    if (currentView === 'weeks') {
+      const lived = currentAge * 52;
+      const total = currentExpectancy * 52;
+      return { lived, total, remaining: Math.max(0, total - lived), perRow: 52, unitName: 'Week' };
+    } else if (currentView === 'months') {
+      const lived = currentAge * 12;
+      const total = currentExpectancy * 12;
+      return { lived, total, remaining: Math.max(0, total - lived), perRow: 12, unitName: 'Month' };
+    } else {
+      return { lived: currentAge, total: currentExpectancy, remaining: Math.max(0, currentExpectancy - currentAge), perRow: 1, unitName: 'Year' };
+    }
+  }
+
+  function switchView(view) {
+    currentView = view;
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.view-btn[data-view="${view}"]`).classList.add('active');
+    if (calendarGenerated) {
+      updateStats();
+      renderGrid();
+    }
+  }
+
+  // ───── RENDER ─────
+  function renderGrid() {
+    const area = document.getElementById('calendarArea');
+    area.innerHTML = '';
+
+    if (currentView === 'years') {
+      renderYearsGrid(area);
+    } else {
+      renderRowGrid(area);
+    }
+  }
+
+  function renderRowGrid(area) {
+    const info = getViewInfo();
+    const perRow = info.perRow;
+    const totalYears = currentExpectancy;
+
+    const sqSize = currentView === 'weeks' ? 10 : 16;
+    const gap = currentView === 'weeks' ? 3 : 4;
+
+    const yAxis = document.createElement('div');
+    yAxis.className = 'y-axis';
+
+    const gridRows = document.createElement('div');
+    gridRows.className = 'grid-rows';
+
+    let unitIndex = 0;
+
+    for (let year = 0; year < totalYears; year++) {
+      if (year > 0 && year % 10 === 0) {
+        const sY = document.createElement('div'); sY.className = 'decade-spacer'; yAxis.appendChild(sY);
+        const sG = document.createElement('div'); sG.className = 'decade-spacer'; gridRows.appendChild(sG);
+      }
+
+      const label = document.createElement('div');
+      label.className = 'y-axis-label';
+      label.style.height = (sqSize + gap) + 'px';
+      const yn = year + 1;
+      if (yn % 5 === 0) label.textContent = yn;
+      yAxis.appendChild(label);
+
+      const row = document.createElement('div');
+      row.className = 'grid-row';
+      row.style.gap = gap + 'px';
+      row.style.marginBottom = gap + 'px';
+
+      for (let col = 0; col < perRow; col++) {
+        const sq = document.createElement('div');
+        sq.className = 'week-square ' + (unitIndex < info.lived ? 'lived' : 'remaining');
+        sq.style.width = sqSize + 'px';
+        sq.style.height = sqSize + 'px';
+        sq.dataset.unit = info.unitName + ' ' + (unitIndex + 1);
+        sq.dataset.status = unitIndex < info.lived ? 'Lived' : 'Remaining';
+
+        sq.addEventListener('mouseenter', showTooltip);
+        sq.addEventListener('mousemove', moveTooltip);
+        sq.addEventListener('mouseleave', hideTooltip);
+
+        row.appendChild(sq);
+        unitIndex++;
+      }
+      gridRows.appendChild(row);
+    }
+
+    area.appendChild(yAxis);
+    area.appendChild(gridRows);
+  }
+
+  function renderYearsGrid(area) {
+    const totalYears = currentExpectancy;
+    const sqSize = 32;
+    const gap = 4;
+    const perRow = 10;
+
+    const yAxis = document.createElement('div');
+    yAxis.className = 'y-axis';
+
+    const gridRows = document.createElement('div');
+    gridRows.className = 'grid-rows';
+
+    const totalRows = Math.ceil(totalYears / perRow);
+
+    for (let r = 0; r < totalRows; r++) {
+      if (r > 0) {
+        const sY = document.createElement('div'); sY.className = 'decade-spacer'; yAxis.appendChild(sY);
+        const sG = document.createElement('div'); sG.className = 'decade-spacer'; gridRows.appendChild(sG);
+      }
+
+      const label = document.createElement('div');
+      label.className = 'y-axis-label';
+      label.style.height = (sqSize + gap) + 'px';
+      const decEnd = (r + 1) * 10;
+      if (decEnd <= totalYears || r === totalRows - 1) label.textContent = Math.min(decEnd, totalYears);
+      yAxis.appendChild(label);
+
+      const row = document.createElement('div');
+      row.className = 'grid-row';
+      row.style.gap = gap + 'px';
+      row.style.marginBottom = gap + 'px';
+
+      for (let col = 0; col < perRow; col++) {
+        const idx = r * perRow + col;
+        if (idx >= totalYears) break;
+
+        const sq = document.createElement('div');
+        sq.className = 'week-square ' + (idx < currentAge ? 'lived' : 'remaining');
+        sq.style.width = sqSize + 'px';
+        sq.style.height = sqSize + 'px';
+        sq.style.borderRadius = '3px';
+        sq.dataset.unit = 'Year ' + (idx + 1);
+        sq.dataset.status = idx < currentAge ? 'Lived' : 'Remaining';
+
+        sq.addEventListener('mouseenter', showTooltip);
+        sq.addEventListener('mousemove', moveTooltip);
+        sq.addEventListener('mouseleave', hideTooltip);
+
+        row.appendChild(sq);
+      }
+      gridRows.appendChild(row);
+    }
+
+    area.appendChild(yAxis);
+    area.appendChild(gridRows);
+  }
+
+  // ───── TOOLTIP ─────
+  function showTooltip(e) {
+    const unit = e.target.dataset.unit;
+    const status = e.target.dataset.status;
+    if (!unit) return;
+    tooltip.querySelector('.tt-week').textContent = unit;
+    tooltip.querySelector('.tt-status').textContent = status;
+    tooltip.classList.add('show');
+  }
+
+  function moveTooltip(e) {
+    tooltip.style.left = (e.clientX + 12) + 'px';
+    tooltip.style.top = (e.clientY - 36) + 'px';
+  }
+
+  function hideTooltip() { tooltip.classList.remove('show'); }
+
+  // ───── PDF DOWNLOAD (Canvas-based, sharp) ─────
+  function downloadPDF() {
+    const info = getViewInfo();
+    const perRow = currentView === 'years' ? 10 : info.perRow;
+    const totalYears = currentExpectancy;
+
+    // Sizing config per view
+    let sqSize, gapSize;
+    if (currentView === 'weeks') { sqSize = 8; gapSize = 2; }
+    else if (currentView === 'months') { sqSize = 12; gapSize = 3; }
+    else { sqSize = 20; gapSize = 4; }
+
+    const decadeSpacer = 5;
+    const yAxisWidth = 24;
+    const marginX = 40;
+    const marginTop = 50;
+    const marginBottom = 50;
+
+    // Calculate total grid dimensions
+    const gridWidth = perRow * sqSize + (perRow - 1) * gapSize;
+    const numDecadeBreaks = Math.floor((totalYears - 1) / 10);
+
+    let totalGridHeight;
+    if (currentView === 'years') {
+      const numRows = Math.ceil(totalYears / perRow);
+      const numYearDecadeBreaks = numRows > 1 ? numRows - 1 : 0;
+      totalGridHeight = numRows * sqSize + (numRows - 1) * gapSize + numYearDecadeBreaks * decadeSpacer;
+    } else {
+      totalGridHeight = totalYears * sqSize + (totalYears - 1) * gapSize + numDecadeBreaks * decadeSpacer;
+    }
+
+    const canvasW = marginX * 2 + yAxisWidth + gridWidth;
+    const contentH = marginTop + totalGridHeight + 40;
+
+    // Standardise canvas height so PDF scaling is consistent across views
+    const standardCanvasH = 800;
+    const canvasH = Math.max(contentH + marginBottom, standardCanvasH);
+
+    // Create high-res canvas
+    const scale = 3;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasW * scale;
+    canvas.height = canvasH * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // Title
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font = '600 22px "DM Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Life Calendar', canvasW / 2, 32);
+
+    // Draw grid
+    const gridStartX = marginX + yAxisWidth;
+    let y = marginTop;
+    let unitIndex = 0;
+
+    if (currentView === 'years') {
+      const totalRows = Math.ceil(totalYears / perRow);
+      for (let r = 0; r < totalRows; r++) {
+        if (r > 0) y += decadeSpacer;
+
+        // Y-axis label
+        const decEnd = (r + 1) * 10;
+        const labelVal = Math.min(decEnd, totalYears);
+        if (decEnd <= totalYears || r === totalRows - 1) {
+          ctx.fillStyle = '#999';
+          ctx.font = '500 7px "DM Sans", sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(String(labelVal), marginX + yAxisWidth - 6, y + sqSize / 2 + 2.5);
+        }
+
+        for (let col = 0; col < perRow; col++) {
+          const idx = r * perRow + col;
+          if (idx >= totalYears) break;
+          const x = gridStartX + col * (sqSize + gapSize);
+          ctx.fillStyle = idx < currentAge ? '#7c6cf0' : '#e2e0ec';
+          roundRect(ctx, x, y, sqSize, sqSize, 2);
+        }
+        y += sqSize + gapSize;
+      }
+    } else {
+      for (let year = 0; year < totalYears; year++) {
+        if (year > 0 && year % 10 === 0) y += decadeSpacer;
+
+        // Y-axis label
+        const yn = year + 1;
+        if (yn % 5 === 0) {
+          ctx.fillStyle = '#999';
+          ctx.font = '500 7px "DM Sans", sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(String(yn), marginX + yAxisWidth - 6, y + sqSize / 2 + 2.5);
+        }
+
+        for (let col = 0; col < perRow; col++) {
+          const x = gridStartX + col * (sqSize + gapSize);
+          ctx.fillStyle = unitIndex < info.lived ? '#7c6cf0' : '#e2e0ec';
+          roundRect(ctx, x, y, sqSize, sqSize, 1);
+          unitIndex++;
+        }
+        y += sqSize + gapSize;
+      }
+    }
+
+    // Quote
+    // Quote - always positioned at fixed distance from bottom
+    const quoteY = canvasH - 30;
+    ctx.fillStyle = '#777';
+    ctx.font = 'italic 11px "DM Serif Display", serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('\u201CEvery man dies. Not every man really lives.\u201D', canvasW / 2, quoteY);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '400 8px "DM Sans", sans-serif';
+    ctx.fillText('\u2014 William Wallace', canvasW / 2, quoteY + 16);
+
+    // Generate PDF from canvas
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+
+    const imgData = canvas.toDataURL('image/png');
+    const imgRatio = canvasH / canvasW;
+    const pdfMargin = 10;
+    let imgW = pageW - pdfMargin * 2;
+    let imgH = imgW * imgRatio;
+
+    if (imgH > pageH - pdfMargin * 2) {
+      imgH = pageH - pdfMargin * 2;
+      imgW = imgH / imgRatio;
+    }
+
+    const xOff = (pageW - imgW) / 2;
+    const yOff = (pageH - imgH) / 2;
+
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageW, pageH, 'F');
+    pdf.addImage(imgData, 'PNG', xOff, yOff, imgW, imgH);
+    pdf.save('life-calendar.pdf');
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ───── ENTER KEY ─────
+  document.querySelectorAll('input[type="number"]').forEach(input => {
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') generateCalendar(); });
+  });
+</script>
+</body>
+</html>
