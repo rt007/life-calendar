@@ -15,5 +15,3 @@ Life Calendar is a browser-based tool that visualises a person's life as a grid 
 
 
 ---
-
-Developed by RT
