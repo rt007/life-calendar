@@ -13,5 +13,6 @@ Life Calendar is a browser-based tool that visualises a person's life as a grid 
 
 ## Live Demo
 https://rt007.github.io/life-calendar/
+*(Ctrl + Click to open in a new tab)*
 
 ---
