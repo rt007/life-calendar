@@ -12,7 +12,7 @@ Life Calendar is a browser-based tool that visualises a person's life as a grid 
 - Vanilla JavaScript: all logic, DOM manipulation, canvas rendering, and PDF generation
 
 ## Live Demo
-https://rt007.github.io/life-calendar/
+https://lifecalendar.romalbuilds.com
 *(Ctrl + Click to open in a new tab)*
 
 ---
